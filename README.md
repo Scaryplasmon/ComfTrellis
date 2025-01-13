@@ -28,17 +28,10 @@ python setup.py install
 ```
 
 ### Results
+https://github.com/user-attachments/assets/f1bd019b-5f1a-4604-94d6-7ccecf61e0cd
 
-<p align="center">
-  <video width="400" controls>
-    <source src="assets/singleView.mp4" type="video/mp4">
-  </video>
-</p>
-<p align="center">
-  <video width="400" controls>
-    <source src="assets/MultiView_VS_SingleView.mp4" type="video/mp4">
-  </video>
-</p>
+
+https://github.com/user-attachments/assets/3f8b145c-abf3-45c5-bcc9-ba4c34acf40f
 
 ## Example Workflows
 
@@ -46,6 +39,7 @@ LowQuality_SingleView & HighQuality_SingleView
 
 <p float="left">
   <img src="assets/LowQuality_SingleView.png" width="200"/>
+  
   <img src="assets/HighQuality_SingleView.png" width="200"/>
 </p>
 
@@ -53,7 +47,8 @@ LowQuality_MultiView & HighQuality_MultiView
 
 <p float="left">
   <img src="assets/LowQuality_MultiView.png" width="200"/>
-  <img src="assets/HighQuality_MultiView.png" width="200"/>
+
+  <img src="https://github.com/user-attachments/assets/8195f46e-4578-4b15-bca9-2a86cfb4c4b5" width="200"/>
 </p>
 
 
