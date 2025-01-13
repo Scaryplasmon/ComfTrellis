@@ -1,0 +1,15 @@
+[project]
+name = "ComfTrellis"
+description = "1 click install to run Trellis in ComfyUI"
+version = "1.0.0"
+license = {file = "LICENSE"}
+dependencies = ["--index-url https://download.pytorch.org/whl/cu124", "torch==2.5.1", "torchvision==0.16.1", "xformers==0.0.28.post3", "--find-links https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.5.1_cu124.html", "kaolin", "imageio", "imageio-ffmpeg", "tqdm", "easydict", "opencv-python-headless", "ninja", "rembg", "onnxruntime", "trimesh", "xatlas", "pyvista", "pymeshfix", "igraph", "git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8"]
+
+[project.urls]
+Repository = "https://github.com/comfyanonymous/ComfyUI"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyUI"
+Icon = ""
