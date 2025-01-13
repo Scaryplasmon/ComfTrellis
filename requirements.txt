@@ -5,7 +5,6 @@ imageio-ffmpeg
 easydict 
 opencv-python-headless 
 rembg 
-onnxruntime-gpu
 trimesh 
 xatlas 
 pyvista
