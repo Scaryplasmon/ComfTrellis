@@ -1,16 +1,22 @@
-
---index-url https://pypi.org/simple
 imageio 
 imageio-ffmpeg  
 easydict 
 opencv-python-headless 
-rembg 
+rembg
+onnxruntime-gpu
 trimesh 
 xatlas 
 pyvista
 plyfile
-pymeshfix==0.17.0
+pymeshfix
 igraph
 
 --find-links https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.5.1_cu124.html
 kaolin
+
+--index-url https://download.pytorch.org/whl/cu124
+xformers==0.0.28.post3
+
+# --index-url https://download.pytorch.org/whl/cu124
+
+# https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8
