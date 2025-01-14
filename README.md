@@ -1,78 +1,107 @@
-# ComfTrellis
+# ComfTrellis (❁´◡`❁) 🍬🎊
+[![Python 3.10](https://img.shields.io/badge/Python-3.10-blue.svg)](https://www.python.org/downloads/release/python-3100/)
+[![CUDA 12.4](https://img.shields.io/badge/CUDA-12.4-green.svg)](https://developer.nvidia.com/cuda-toolkit)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A ComfyUI implementation of [TRELLIS](https://trellis3d.github.io/) - a powerful 3D asset generation model that converts images into 3D assets.
+> A quick start ComfyUI implementation of [TRELLIS](https://trellis3d.github.io/).
 
+## 🚀 Features
+- Single and multi-view image processing
+- Optimized for 8GB VRAM
+- Fast inference (25s)
+- Pre-compiled wheels for quick installation
 
 ## Requirements
 
-- ComfyUI
-- CUDA124-capable GPU with at least 8GB VRAM
-- Python 3.10
+| Framework | ComfyUI |
+|-----------|---------------|
+| GPU | 8GB+ VRAM |
+| CUDA | 12.4 |
+| Python | 3.10 |
+| OS | Windows 11 |
 
 ## Installation
 
-### Quick Install
+### Quick Start
 Simply clone this repository into your ComfyUI's `custom_nodes` folder and launch ComfyUI:
 
 ```bash
 cd custom_nodes
-git clone https://github.com/yourusername/ComfTrellis.git
+git clone https://github.com/Scaryplasmon/ComfTrellis.git
+cd ..
+python main.py
+#or comfy launch
 ```
 
-### Manual Install
-If the quick install doesn't work, you can run the setup script:
+## Results
+<details>
+<summary>Click to see the videos</summary>
 
-```bash
-cd ComfTrellis
-python setup.py install
-```
-
-### Results
 https://github.com/user-attachments/assets/f1bd019b-5f1a-4604-94d6-7ccecf61e0cd
 
-
 https://github.com/user-attachments/assets/3f8b145c-abf3-45c5-bcc9-ba4c34acf40f
+</details>
 
-## Example Workflows
+## 🧌 Example Workflows
+> Drag and drop these workflows directly into ComfyUI
 
-LowQuality_SingleView & HighQuality_SingleView
+### Single View Processing
+<table>
+  <tr>
+    <th width="50%">Low Quality</th>
+    <th width="50%">High Quality</th>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/LowQuality_SingleView.png" width="400"/></td>
+    <td align="center"><img src="assets/HighQuality_SingleView.png" width="400"/></td>
+  </tr>
+  <tr>
+    <td align="center"><i>LowQuality_SingleView</i></td>
+    <td align="center"><i>HighQuality_SingleView</i></td>
+  </tr>
+</table>
 
-<p float="left">
-  <img src="assets/LowQuality_SingleView.png" width="200"/>
-  
-  <img src="assets/HighQuality_SingleView.png" width="200"/>
-</p>
+### Multi View Processing
+<table>
+  <tr>
+    <th width="50%">Low Quality</th>
+    <th width="50%">High Quality</th>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/LowQuality_MultiView.png" width="400"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/8195f46e-4578-4b15-bca9-2a86cfb4c4b5" width="400"/></td>
+  </tr>
+  <tr>
+    <td align="center"><i>LowQuality_MultiView</i></td>
+    <td align="center"><i>HighQuality_MultiView</i></td>
+  </tr>
+</table>
 
-LowQuality_MultiView & HighQuality_MultiView
+## 🔧 Available Nodes
 
-<p float="left">
-  <img src="assets/LowQuality_MultiView.png" width="200"/>
+| Node | Description |
+|------|-------------|
+| **Load Trellis Model** | Downloads and loads the TRELLIS model for inference |
+| **Trellis Inference** | Converts images into 3D Gaussians with dynamic support |
+| **Save GLB File** | Exports 3D models to GLB format ("fast"/"opt" modes) |
+| **Remove Background (Square)** | Preprocesses images with background removal |
 
-  <img src="https://github.com/user-attachments/assets/8195f46e-4578-4b15-bca9-2a86cfb4c4b5" width="200"/>
-</p>
+## ⚡ Performance
 
+The implementation is optimized for both efficiency and quality:
 
-## Nodes
-
-This implementation provides several nodes for working with TRELLIS:
-
-- **Load Trellis Model**: Donwloads and Loads the TRELLIS model for inference
-- **Trellis Inference**: Converts images into 3D assets with various parameters for control
-- **Save GLB File**: Exports the generated 3D model to GLB format with customizable settings
-- **Remove Background (Square)**: Preprocesses images by removing backgrounds and making them square
-- **Multi Image Batch**: Combines multiple images for multi-view 3D generation
-
-## Model Details
-
-This implementation is based on Microsoft's TRELLIS project, which offers:
-
-- 3D asset generation from images
-- Multiple output formats (Radiance Fields, 3D Gaussians, meshes)
-- Support for both single and multi-image inputs
-
-For more details about the underlying model, visit the [TRELLIS project page](https://trellis3d.github.io/).
+- 🔄 Automatic wheel installation
+- 💨 25-second processing time at maximum settings thanks to early stopping.
+- 💾 8GB VRAM optimization
 
 
-## Credits
+## 📈 Ablation Studies
+*Coming soon*
 
-This is a ComfyUI implementation of [TRELLIS](https://github.com/microsoft/TRELLIS) by Microsoft Research. Please refer to their repository for the original implementation and research paper.
+## 👏 Credits
+<p align="center">
+This is a ComfyUI implementation of <a href="https://github.com/microsoft/TRELLIS">TRELLIS</a> by Microsoft Research.<br>
+Please refer to their repository for the original implementation and research paper.
+
+---
+
