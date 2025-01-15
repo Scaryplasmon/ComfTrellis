@@ -129,6 +129,7 @@ class SaveGLBFile:
             raise
             
         return ()
+    
 class RembgSquare:
     @classmethod
     def INPUT_TYPES(s):
@@ -152,77 +153,100 @@ class RembgSquare:
     FUNCTION = "process_image"
     CATEGORY = "Trellis"
 
+    def check_transparency(self, img):
+        """Check if image has any fully transparent pixels"""
+        if img.mode == 'RGBA':
+            alpha = np.array(img.split()[3])
+            return (alpha == 0).any()  # Return True if any pixel has 0 alpha
+        return False
+
     def process_image(self, image, white_bg, edge_quality):
-        try:
-            from rembg import remove, new_session
-        except ImportError:
-            print("Please install rembg: pip install rembg")
-            raise ImportError("rembg not installed. Please install with: pip install rembg")
-            
-        # Convert ComfyUI image tensor to PIL
         i = 255. * image[0].cpu().numpy()
         input_image = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
         
-        # Get original size
         w, h = input_image.size
         size = max(w, h)
         
-        # Create session with simplified parameters
-        session = new_session()
+
+        if input_image.mode == 'RGBA':
+            if self.check_transparency(input_image):
+                print("Image is mostly transparent, skipping background removal")
+                output_image = input_image
+            else:
+                print("Image has alpha channel, skipping background removal")
+                output_image = input_image
+        else:
+            try:
+                import warnings
+                from rembg import remove, new_session
+                import onnxruntime as ort
+                import signal
+                from contextlib import contextmanager
+                import time
+                
+                class TimeoutException(Exception): pass
+                
+                @contextmanager
+                def time_limit(seconds):
+                    def signal_handler(signum, frame):
+                        raise TimeoutException("Timed out!")
+                    signal.signal(signal.SIGALRM, signal_handler)
+                    signal.alarm(seconds)
+                    try:
+                        yield
+                    finally:
+                        signal.alarm(0)
+                
+                warnings.filterwarnings('ignore')
+                ort.set_default_logger_severity(3)
+                
+                try:
+                    session = new_session(providers=['CUDAExecutionProvider'])
+                    start_time = time.time()
+                    
+                    with time_limit(15):
+                        output_image = remove(
+                            input_image,
+                            session=session,
+                            alpha_matting=True,
+                            alpha_matting_erode_size=edge_quality
+                        )
+                        
+                except (TimeoutException, Exception) as e:
+                    print("Background removal taking too long or failed, trying with reduced quality...")
+                    try:
+                        output_image = remove(
+                            input_image,
+                            session=session,
+                            alpha_matting=False,
+                            post_process_mask=True
+                        )
+                    except Exception as e2:
+                        print(f"Background removal failed completely, using original image: {str(e2)}")
+                        output_image = input_image.convert('RGBA')
+                
+            except ImportError:
+                print("Please install rembg: pip install rembg")
+                raise ImportError("rembg not installed. Please install with: pip install rembg")
         
-        # Remove background
-        output_image = remove(
-            input_image,
-            session=session,
-            alpha_matting=True,
-            alpha_matting_erode_size=edge_quality
-        )
-        
-        # Create square background
         bg_color = (255, 255, 255) if white_bg else (0, 0, 0)
         square_bg = Image.new('RGBA', (size, size), bg_color)
         
-        # Calculate position to paste the image centered
         paste_x = (size - w) // 2
         paste_y = (size - h) // 2
         
-        # Paste the image onto the square background
-        square_bg.paste(output_image, (paste_x, paste_y), output_image.split()[3])
+        if output_image.mode == 'RGBA':
+            square_bg.paste(output_image, (paste_x, paste_y), output_image.split()[3])
+        else:
+            square_bg.paste(output_image, (paste_x, paste_y))
         
-        # Convert to RGB
         square_bg = square_bg.convert('RGB')
         
-        # Convert back to ComfyUI format
         output_tensor = torch.from_numpy(np.array(square_bg).astype(np.float32) / 255.0)
         output_tensor = output_tensor.unsqueeze(0)
         
         return (output_tensor,)
-class MultiImageBatch:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "image1": ("IMAGE",),
-                "image2": ("IMAGE",),
-                "image3": ("IMAGE",),
-            }
-        }
-    
-    RETURN_TYPES = ("IMAGE_LIST",)
-    RETURN_NAMES = ("image_list",)
-    FUNCTION = "batch_images"
-    CATEGORY = "Trellis"
 
-    def batch_images(self, image1, image2, image3):
-        # Convert all images to PIL format
-        images = []
-        for img in [image1, image2, image3]:
-            if img is not None:
-                i = 255. * img[0].cpu().numpy()
-                pil_img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-                images.append(pil_img)
-        
-        return (images,)
 
 class TrellisInference:
     @classmethod
@@ -236,7 +260,11 @@ class TrellisInference:
                 "sparse_cfg": ("FLOAT", {"default": 7.5, "min": 0.0, "max": 20.0}),
                 "slat_steps": ("INT", {"default": 16, "min": 1, "max": 50}),
                 "slat_cfg": ("FLOAT", {"default": 4.5, "min": 0.0, "max": 20.0}),
-                "mode": (["stochastic", "multidiffusion"], {"default": "stochastic"}),
+                "num_views": ("INT", {"default": 5, "min": 1, "max": 36}),
+                "camera_distance": ("FLOAT", {"default": 2.0, "min": 0.1, "max": 10.0}),
+                "camera_fov": ("FLOAT", {"default": 30.0, "min": 1.0, "max": 120.0}),
+                "mode": (["stochastic", "multidiffusion"], {"default": "stochastic"})
+
             },
             "optional":{
                 "image2": ("IMAGE",),
@@ -249,12 +277,12 @@ class TrellisInference:
     FUNCTION = "generate"
     CATEGORY = "Trellis"
 
-    def generate(self, model, image1, image2=None, image3=None, seed=1, sparse_steps=8, sparse_cfg=7.5, 
-                slat_steps=16, slat_cfg=4.5, mode="stochastic"):
+    def generate(self, model, image1, image2=None, image3=None, seed=1, 
+                sparse_steps=8, sparse_cfg=7.5, slat_steps=16, slat_cfg=4.5, 
+                mode="stochastic", num_views=5, camera_distance=2.0, camera_fov=30.0):
         device = mm.get_torch_device()
         model.to(device)
         
-        # Convert images to PIL format
         images = []
         for img in [image1, image2, image3]:
             if img is not None:
@@ -262,9 +290,7 @@ class TrellisInference:
                 pil_img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
                 images.append(pil_img)
         
-        # Choose inference mode based on number of images
         if len(images) > 1:
-            # Multiple images mode
             print("Multiple images mode")
             outputs = model.run_multi_image(
                 images,
@@ -280,7 +306,6 @@ class TrellisInference:
                 mode=mode
             )
         else:
-            # Single image mode
             print("Single image mode")
             outputs = model.run(
                 images[0],
@@ -297,24 +322,25 @@ class TrellisInference:
         
         mesh, gaussian = outputs['mesh'][0], outputs['gaussian'][0]
         
-        # Render the 5 views
-        preview_images = render_utils.render_five_views(gaussian)
+        preview_images = render_utils.render_n_views(
+            gaussian,
+            n_views=num_views,
+            resolution=512,
+            r=camera_distance,
+            fov=camera_fov
+        )
         
-        # Convert to ComfyUI format
         images_list = []
         for img in preview_images:
-            # Convert numpy array to tensor and ensure RGB
             if len(img.shape) == 2:
-                img = np.stack([img] * 3, axis=2)  # Add RGB channels last
+                img = np.stack([img] * 3, axis=2)
             elif img.shape[2] == 1:
-                img = np.repeat(img, 3, axis=2)  # Repeat single channel to RGB
+                img = np.repeat(img, 3, axis=2)
                 
-            # Convert to tensor in ComfyUI format (1, H, W, 3)
             img_tensor = torch.from_numpy(img).float() / 255.0
-            img_tensor = img_tensor.unsqueeze(0)  # Add batch dimension first
+            img_tensor = img_tensor.unsqueeze(0)
             images_list.append(img_tensor)
         
-        # Stack all images
         preview_tensor = torch.cat(images_list, dim=0)
         
         return (mesh, gaussian, preview_tensor)
@@ -324,7 +350,6 @@ NODE_CLASS_MAPPINGS = {
     "TrellisInference": TrellisInference,
     "SaveGLBFile": SaveGLBFile,
     "RembgSquare": RembgSquare,
-    "MultiImageBatch": MultiImageBatch,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -332,5 +357,4 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TrellisInference": "Trellis Inference",
     "SaveGLBFile": "Save GLB File",
     "RembgSquare": "Remove Background (Square)",
-    "MultiImageBatch": "Multi Image Batch",
 }

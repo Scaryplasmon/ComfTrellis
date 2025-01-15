@@ -138,6 +138,47 @@ def render_five_views(sample, resolution=512):
     
     return res['color']
 
+def render_n_views(sample, n_views=5, resolution=512, r=2.0, fov=30):
+    """
+    Renders n views of the sample, starting from front view and distributing the remaining views evenly
+    
+    Args:
+        sample: The 3D sample to render
+        n_views: Number of views to render (minimum 1)
+        resolution: Image resolution
+        r: Camera distance from center
+        fov: Field of view in degrees
+    """
+    # Ensure at least 1 view
+    n_views = max(1, n_views)
+    
+    # First view is always front view
+    views = [(-3, 0.3)]  # Front view
+    
+    if n_views > 1:
+        # Calculate remaining views evenly distributed
+        angle_step = 2 * np.pi / (n_views - 1)
+        for i in range(n_views - 1):
+            angle = -0.785 + (i * angle_step)  # Start from -45 degrees
+            views.append((angle, 0.3))
+    
+    yaws = [v[0] for v in views]
+    pitchs = [v[1] for v in views]
+    
+    extrinsics, intrinsics = yaw_pitch_r_fov_to_extrinsics_intrinsics(yaws, pitchs, r, fov)
+    r_color = np.random.rand()
+    g_color = np.random.rand()
+    b_color = np.random.rand()
+    
+    res = render_frames(
+        sample,
+        extrinsics,
+        intrinsics,
+        {'resolution': resolution, 'bg_color': (r_color, g_color, b_color)}
+    )
+    
+    return res['color']
+
 
 def render_snapshot(samples, resolution=512, bg_color=(0, 0, 0), offset=(-16 / 180 * np.pi, 20 / 180 * np.pi), r=10, fov=8, **kwargs):
     yaw = [0, np.pi/2, np.pi, 3*np.pi/2]

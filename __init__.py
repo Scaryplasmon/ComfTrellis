@@ -21,7 +21,6 @@ def setup_packages():
     """Setup required packages if not already installed"""
     cur_dir = Path(__file__).parent.absolute()
     
-    # Package mapping (wheel name -> actual import name)
     package_mapping = {
         'xformers': 'xformers',
         'kaolin': 'kaolin',
@@ -32,14 +31,12 @@ def setup_packages():
         'diffoctreerast': 'diffoctreerast'
     }
     
-    # Special packages that need installation but skip verification
     special_packages = ['diff_gaussian_rasterization']
     
     print("\nTesting all required packages...")
     missing_packages = []
     installed_packages = []
     
-    # Check regular packages
     for wheel_name, import_name in package_mapping.items():
         if not test_import(import_name):
             print(f"Package {wheel_name} needs installation")
@@ -47,7 +44,6 @@ def setup_packages():
         else:
             installed_packages.append(wheel_name)
     
-    # Add special packages if they're not installed
     for pkg_name in special_packages:
         try:
             subprocess.run([sys.executable, "-m", "pip", "show", pkg_name], 
@@ -64,7 +60,6 @@ def setup_packages():
     print(f"\nPackages to install: {missing_packages}")
     print(f"Already working packages: {installed_packages}")
     
-    # Run setup.py with list of missing packages
     setup_script = cur_dir / "setup.py"
     if not setup_script.exists():
         print("Error: setup.py not found")
@@ -78,11 +73,10 @@ def setup_packages():
             "--packages", *missing_packages
         ])
         
-        # Verify installations ONLY for regular packages
         print("\nVerifying installations...")
         still_missing = []
         for pkg_name in missing_packages:
-            if pkg_name not in special_packages:  # Skip verification for special packages
+            if pkg_name not in special_packages: 
                 import_name = package_mapping[pkg_name]
                 if not test_import(import_name):
                     still_missing.append(pkg_name)
@@ -98,7 +92,6 @@ def setup_packages():
         print(f"\nError during package installation: {e}")
         return False
 
-# Run setup before importing nodes
 print("\nInitializing ComfTrellis...")
 if setup_packages():
     print("\nLoading ComfTrellis nodes...")
