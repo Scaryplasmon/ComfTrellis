@@ -8,8 +8,30 @@
 ## 🚀 Features
 - Single and multi-view image processing
 - Optimized for 8GB VRAM
-- Fast inference (25s)
+- Fast inference (~10s)
 - Pre-compiled wheels for quick installation
+
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/22f713ab-f252-4751-856f-6e85834f867b" width="800"/>
+    </td>
+
+## 🔧 Available Nodes
+
+| Node | Description |
+|------|-------------|
+| **Load Trellis Model** | Downloads and loads the TRELLIS model for inference |
+| **Trellis Inference** | Converts images into 3D Gaussians with dynamic support for single and multiview input with integrated rendering options|
+| **Save GLB File** | Exports 3D models to GLB format ("fast"/"opt" modes) |
+| **Remove Background (Square)** | Uitlity - Preprocesses images with background removal, standardizes the inputs |
+
+## Results
+<details>
+<summary>Click to see the videos</summary>
+
+https://github.com/user-attachments/assets/f1bd019b-5f1a-4604-94d6-7ccecf61e0cd
+
+https://github.com/user-attachments/assets/3f8b145c-abf3-45c5-bcc9-ba4c34acf40f
+</details>
 
 ## Requirements
 
@@ -32,16 +54,6 @@ cd ..
 python main.py
 #or comfy launch
 ```
-
-## Results
-<details>
-<summary>Click to see the videos</summary>
-
-https://github.com/user-attachments/assets/f1bd019b-5f1a-4604-94d6-7ccecf61e0cd
-
-https://github.com/user-attachments/assets/3f8b145c-abf3-45c5-bcc9-ba4c34acf40f
-</details>
-
 ## 🧌 Example Workflows
 > Drag and drop these workflows directly into ComfyUI
 
@@ -52,8 +64,8 @@ https://github.com/user-attachments/assets/3f8b145c-abf3-45c5-bcc9-ba4c34acf40f
     <th width="50%">High Quality</th>
   </tr>
   <tr>
-    <td align="center"><img src="assets/LowQuality_SingleView.png" width="400"/></td>
-    <td align="center"><img src="assets/HighQuality_SingleView.png" width="400"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/5e7b752a-c08f-4fad-80b6-80d0c1c6a7ac" width="400"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/93090e1e-8365-46f9-9b22-b23fcb4ff20a" width="400"/></td>
   </tr>
   <tr>
     <td align="center"><i>LowQuality_SingleView</i></td>
@@ -68,8 +80,8 @@ https://github.com/user-attachments/assets/3f8b145c-abf3-45c5-bcc9-ba4c34acf40f
     <th width="50%">High Quality</th>
   </tr>
   <tr>
-    <td align="center"><img src="assets/LowQuality_MultiView.png" width="400"/></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/8195f46e-4578-4b15-bca9-2a86cfb4c4b5" width="400"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/b0b9a5a8-cbc2-4f37-85fe-e1a70afdd5f7" width="400"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/ea8e4064-57c4-4954-9457-08ca333ac366" width="400"/></td>
   </tr>
   <tr>
     <td align="center"><i>LowQuality_MultiView</i></td>
@@ -77,14 +89,6 @@ https://github.com/user-attachments/assets/3f8b145c-abf3-45c5-bcc9-ba4c34acf40f
   </tr>
 </table>
 
-## 🔧 Available Nodes
-
-| Node | Description |
-|------|-------------|
-| **Load Trellis Model** | Downloads and loads the TRELLIS model for inference |
-| **Trellis Inference** | Converts images into 3D Gaussians with dynamic support |
-| **Save GLB File** | Exports 3D models to GLB format ("fast"/"opt" modes) |
-| **Remove Background (Square)** | Preprocesses images with background removal |
 
 ## ⚡ Performance
 
