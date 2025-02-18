@@ -138,7 +138,7 @@ def render_five_views(sample, resolution=512):
     
     return res['color']
 
-def render_n_views(sample, n_views=5, resolution=512, r=2.0, fov=30):
+def render_n_views(sample, n_views=5, resolution=512, r=2.0, fov=30, bg_color="white", height=0.3):
     """
     Renders n views of the sample, starting from front view and distributing the remaining views evenly
     
@@ -153,22 +153,39 @@ def render_n_views(sample, n_views=5, resolution=512, r=2.0, fov=30):
     n_views = max(1, n_views)
     
     # First view is always front view
-    views = [(-3, 0.3)]  # Front view
+    views = [(-3, height)]  # Front view
     
     if n_views > 1:
-        # Calculate remaining views evenly distributed
-        angle_step = 2 * np.pi / (n_views - 1)
+        # Calculate angles for remaining views
+        # We divide the circle into n+1 segments but only use n-1 additional views
+        # This ensures we don't place a camera near the front view
+        angle_step = 2 * np.pi / (n_views + 1)
         for i in range(n_views - 1):
-            angle = -0.785 + (i * angle_step)  # Start from -45 degrees
-            views.append((angle, 0.3))
+            # Start from -45 degrees (-0.785 rad) and skip the last segment
+            angle = -0.785 + (i * angle_step)
+            views.append((angle, height))
     
     yaws = [v[0] for v in views]
     pitchs = [v[1] for v in views]
     
     extrinsics, intrinsics = yaw_pitch_r_fov_to_extrinsics_intrinsics(yaws, pitchs, r, fov)
-    r_color = np.random.rand()
-    g_color = np.random.rand()
-    b_color = np.random.rand()
+    
+    if bg_color == "random":
+        r_color = np.random.rand()
+        g_color = np.random.rand()
+        b_color = np.random.rand()
+    elif bg_color == "white":
+        r_color = 1
+        g_color = 1
+        b_color = 1
+    elif bg_color == "black":
+        r_color = 0
+        g_color = 0
+        b_color = 0
+    else:
+        r_color = 1
+        g_color = 1
+        b_color = 1
     
     res = render_frames(
         sample,

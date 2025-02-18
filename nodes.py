@@ -65,6 +65,97 @@ class LoadTrellisModel:
         
         return (pipeline,)
 
+class TrellisGrid:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "images": ("IMAGE",),
+                "rows": ("INT", {
+                    "default": 2,
+                    "min": 1,
+                    "max": 8,
+                    "step": 1,
+                    "display": "number",
+                    "label": "Number of Rows"
+                }),
+                "cols": ("INT", {
+                    "default": 3,
+                    "min": 1,
+                    "max": 8,
+                    "step": 1,
+                    "display": "number",
+                    "label": "Number of Columns"
+                }),
+                "border": ("INT", {
+                    "default": 8,
+                    "min": 0,
+                    "max": 100,
+                    "step": 2,
+                    "display": "slider",
+                    "label": "Border Width"
+                }),
+                "border_color": (["white", "black", "gray"], {"default": "white"}),
+                "uniform_padding": ("BOOLEAN", {"default": True, "label": "Uniform Padding"}),
+            }
+        }
+    
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "create_grid"
+    CATEGORY = "Trellis"
+
+    def create_grid(self, images, rows, cols, border, border_color, uniform_padding):
+        import torch
+        import numpy as np
+        from PIL import Image
+        
+        image_list = []
+        for i in range(images.shape[0]):
+            img = (images[i].cpu().numpy() * 255).astype(np.uint8)
+            image_list.append(Image.fromarray(img))
+        
+        n_images = len(image_list)
+        if n_images == 0:
+            raise ValueError("No images provided")
+            
+        if rows * cols < n_images:
+            cols = max(cols, int(np.ceil(n_images / rows)))
+        
+        w, h = image_list[0].size
+        
+        # calculate grid dimensions with borders
+        grid_w = cols * w + (cols + 1) * border if uniform_padding else cols * w + (cols - 1) * border
+        grid_h = rows * h + (rows + 1) * border if uniform_padding else rows * h + (rows - 1) * border
+        
+        bg_color = {
+            "white": (255, 255, 255),
+            "black": (0, 0, 0),
+            "gray": (128, 128, 128)
+        }[border_color]
+        
+        grid = Image.new('RGB', (grid_w, grid_h), bg_color)
+        
+        idx = 0
+        for r in range(rows):
+            for c in range(cols):
+                if idx >= n_images:
+                    break
+                    
+                if uniform_padding:
+                    x = c * (w + border) + border
+                    y = r * (h + border) + border
+                else:
+                    x = c * (w + border)
+                    y = r * (h + border)
+                
+                grid.paste(image_list[idx], (x, y))
+                idx += 1
+        
+        grid_tensor = torch.from_numpy(np.array(grid).astype(np.float32) / 255.0)
+        grid_tensor = grid_tensor.unsqueeze(0)
+        
+        return (grid_tensor,)
+
 class SaveGLBFile:
     @classmethod
     def INPUT_TYPES(s):
@@ -90,7 +181,6 @@ class SaveGLBFile:
         output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
         os.makedirs(output_dir, exist_ok=True)
         
-        # Add .glb extension if not present
         if not filename.lower().endswith('.glb'):
             filename += '.glb'
             
@@ -153,12 +243,18 @@ class RembgSquare:
     FUNCTION = "process_image"
     CATEGORY = "Trellis"
 
-    def check_transparency(self, img):
-        """Check if image has any fully transparent pixels"""
-        if img.mode == 'RGBA':
-            alpha = np.array(img.split()[3])
-            return (alpha == 0).any()  # Return True if any pixel has 0 alpha
-        return False
+    def __init__(self):
+        self.session = None
+
+    def get_session(self):
+        if self.session is None:
+            try:
+                from rembg import new_session
+                self.session = new_session(providers=['CUDAExecutionProvider'])
+            except ImportError:
+                print("Please install rembg: pip install rembg")
+                raise ImportError("rembg not installed. Please install with: pip install rembg")
+        return self.session
 
     def process_image(self, image, white_bg, edge_quality):
         i = 255. * image[0].cpu().numpy()
@@ -166,79 +262,36 @@ class RembgSquare:
         
         w, h = input_image.size
         size = max(w, h)
-        
 
-        if input_image.mode == 'RGBA':
-            if self.check_transparency(input_image):
-                print("Image is mostly transparent, skipping background removal")
-                output_image = input_image
-            else:
-                print("Image has alpha channel, skipping background removal")
-                output_image = input_image
-        else:
-            try:
-                import warnings
-                from rembg import remove, new_session
-                import onnxruntime as ort
-                import signal
-                from contextlib import contextmanager
-                import time
-                
-                class TimeoutException(Exception): pass
-                
-                @contextmanager
-                def time_limit(seconds):
-                    def signal_handler(signum, frame):
-                        raise TimeoutException("Timed out!")
-                    signal.signal(signal.SIGALRM, signal_handler)
-                    signal.alarm(seconds)
-                    try:
-                        yield
-                    finally:
-                        signal.alarm(0)
-                
-                warnings.filterwarnings('ignore')
-                ort.set_default_logger_severity(3)
-                
-                try:
-                    session = new_session(providers=['CUDAExecutionProvider'])
-                    start_time = time.time()
-                    
-                    with time_limit(15):
-                        output_image = remove(
-                            input_image,
-                            session=session,
-                            alpha_matting=True,
-                            alpha_matting_erode_size=edge_quality
-                        )
-                        
-                except (TimeoutException, Exception) as e:
-                    print("Background removal taking too long or failed, trying with reduced quality...")
-                    try:
-                        output_image = remove(
-                            input_image,
-                            session=session,
-                            alpha_matting=False,
-                            post_process_mask=True
-                        )
-                    except Exception as e2:
-                        print(f"Background removal failed completely, using original image: {str(e2)}")
-                        output_image = input_image.convert('RGBA')
-                
-            except ImportError:
-                print("Please install rembg: pip install rembg")
-                raise ImportError("rembg not installed. Please install with: pip install rembg")
-        
-        bg_color = (255, 255, 255) if white_bg else (0, 0, 0)
+        try:
+            from rembg import remove
+            import warnings
+            import onnxruntime as ort
+            
+            warnings.filterwarnings('ignore')
+            ort.set_default_logger_severity(3)
+            
+            session = self.get_session()
+            
+            output_image = remove(
+                input_image,
+                session=session,
+                alpha_matting=True,
+                alpha_matting_erode_size=edge_quality,
+                bgcolor=[255, 255, 255, 0]
+            )
+            
+        except Exception as e:
+            print(f"Background removal failed: {str(e)}")
+            output_image = input_image.convert('RGBA')
+
+        bg_color = (255, 255, 255, 255) if white_bg else (0, 0, 0, 255)
         square_bg = Image.new('RGBA', (size, size), bg_color)
         
         paste_x = (size - w) // 2
         paste_y = (size - h) // 2
         
-        if output_image.mode == 'RGBA':
-            square_bg.paste(output_image, (paste_x, paste_y), output_image.split()[3])
-        else:
-            square_bg.paste(output_image, (paste_x, paste_y))
+        square_bg.paste(output_image, (paste_x, paste_y), output_image.split()[3])
         
         square_bg = square_bg.convert('RGB')
         
@@ -256,13 +309,15 @@ class TrellisInference:
                 "model": ("TRELLIS_MODEL",),
                 "image1": ("IMAGE",),
                 "seed": ("INT", {"default": 1, "min": 0, "max": 0xffffffffffffffff}),
-                "sparse_steps": ("INT", {"default": 8, "min": 1, "max": 50}),
-                "sparse_cfg": ("FLOAT", {"default": 7.5, "min": 0.0, "max": 20.0}),
-                "slat_steps": ("INT", {"default": 16, "min": 1, "max": 50}),
-                "slat_cfg": ("FLOAT", {"default": 4.5, "min": 0.0, "max": 20.0}),
-                "num_views": ("INT", {"default": 5, "min": 1, "max": 36}),
-                "camera_distance": ("FLOAT", {"default": 2.0, "min": 0.1, "max": 10.0}),
-                "camera_fov": ("FLOAT", {"default": 30.0, "min": 1.0, "max": 120.0}),
+                "sparse_steps": ("INT", {"default": 8, "min": 1, "max": 50, "step": 1}),
+                "sparse_cfg": ("FLOAT", {"default": 7.5, "min": 0.0, "max": 20.0, "step": 0.1}),
+                "slat_steps": ("INT", {"default": 16, "min": 1, "max": 50, "step": 1}),
+                "slat_cfg": ("FLOAT", {"default": 4.5, "min": 0.0, "max": 20.0, "step": 0.1}),
+                "num_views": ("INT", {"default": 5, "min": 1, "max": 36, "step": 1}),
+                "camera_distance": ("FLOAT", {"default": 2.0, "min": 0.1, "max": 10.0, "step": 0.1}),
+                "camera_fov": ("FLOAT", {"default": 30.0, "min": 1.0, "max": 120.0, "step": 1.0}),
+                "height": ("FLOAT", {"default": 0.2, "min": -1.0, "max": 1.0, "step": 0.05}),
+                "bg": (["white", "black", "random"], {"default": "white"}),
                 "mode": (["stochastic", "multidiffusion"], {"default": "stochastic"})
 
             },
@@ -279,7 +334,7 @@ class TrellisInference:
 
     def generate(self, model, image1, image2=None, image3=None, seed=1, 
                 sparse_steps=8, sparse_cfg=7.5, slat_steps=16, slat_cfg=4.5, 
-                mode="stochastic", num_views=5, camera_distance=2.0, camera_fov=30.0):
+                mode="stochastic", num_views=4, camera_distance=2.0, camera_fov=30.0, bg="white", height=0.3):
         device = mm.get_torch_device()
         model.to(device)
         
@@ -327,7 +382,9 @@ class TrellisInference:
             n_views=num_views,
             resolution=512,
             r=camera_distance,
-            fov=camera_fov
+            fov=camera_fov,
+            bg_color=bg,
+            height=height
         )
         
         images_list = []
@@ -350,6 +407,7 @@ NODE_CLASS_MAPPINGS = {
     "TrellisInference": TrellisInference,
     "SaveGLBFile": SaveGLBFile,
     "RembgSquare": RembgSquare,
+    "TrellisGrid": TrellisGrid,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -357,4 +415,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TrellisInference": "Trellis Inference",
     "SaveGLBFile": "Save GLB File",
     "RembgSquare": "Remove Background (Square)",
+    "TrellisGrid": "Trellis Grid",
 }
